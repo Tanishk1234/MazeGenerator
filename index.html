@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Generator with Obstacles</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.9) 20%, rgba(36, 47, 52, 1) 80%);
+            color: #f1f1f1;
+            margin: 0;
+            padding: 20px;
+            overflow: hidden;
+            box-sizing: border-box;
+            height: 100vh;
+        }
+    
+        h1 {
+            margin-bottom: 20px;
+            font-size: 3.5rem;
+            color: #ffeb3b;
+            text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6);
+            letter-spacing: 2px;
+            animation: slideIn 1s ease-out;
+        }
+    
+        @keyframes slideIn {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(0); }
+        }
+    
+        /* Maze Controls */
+        .controls {
+            margin-bottom: 30px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+        }
+    
+        label {
+            font-size: 1.3rem;
+            margin-right: 15px;
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+    
+        input {
+            padding: 12px;
+            width: 100px;
+            margin-right: 15px;
+            border-radius: 8px;
+            border: 2px solid #ff4b2b;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 1rem;
+            transition: 0.4s ease;
+        }
+    
+        input:focus {
+            outline: none;
+            border-color: #ffeb3b;
+            box-shadow: 0 0 10px rgba(255, 235, 59, 0.8);
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+    
+        button {
+            padding: 18px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(145deg, #ff416c, #ff4b2b);
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: 0 6px 15px rgba(255, 80, 80, 0.5);
+        }
+    
+        button:hover {
+            background: linear-gradient(145deg, #ff4b2b, #ff416c);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 80, 80, 0.7);
+        }
+    
+        /* Maze Grid */
+        .maze-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px auto;
+            width: 100%;
+            height: 600px;
+            position: relative;
+            overflow: auto; /* Enable scrolling for larger maze sizes */
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+        }
+    
+        #maze {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); /* Flexible grid size */
+            grid-gap: 2px;
+            transition: all 0.4s ease;
+        }
+    
+        /* Maze Cells */
+        .cell {
+            background-color: #ffffff;
+            border: 2px solid #fff;
+            position: relative;
+            transition: background 0.4s ease, transform 0.3s ease;
+            overflow: hidden;
+            z-index: 1;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+        }
+    
+        .cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.5));
+        }
+    
+        .wall {
+            background-color: #212121;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8);
+        }
+    
+        /* Player */
+        .player {
+            background-color: #00ff00;
+            box-shadow: 0px 0px 20px #00ff00, 0px 0px 30px #00ff00;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            animation: pulsePlayer 1.5s infinite alternate;
+        }
+    
+        @keyframes pulsePlayer {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.3); }
+        }
+    
+        /* Exit Point */
+        .exit {
+            background-color: #ff1744 !important;
+            box-shadow: 0px 0px 20px #ff1744, 0px 0px 25px #ff1744;
+        }
+    
+        /* Obstacles */
+        .spike {
+            background-color: #ff4747;
+            animation: spikeMove 1s infinite alternate;
+            box-shadow: 0px 4px 10px rgba(255, 0, 0, 0.6);
+            transition: background 0.2s ease;
+        }
+    
+        @keyframes spikeMove {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+    
+        .teleport {
+            background-color: #33cc33;
+            box-shadow: 0 0 25px #00ff00;
+            animation: teleportPulse 1.5s infinite alternate;
+        }
+    
+        @keyframes teleportPulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.2); opacity: 1; }
+        }
+    
+        .fallingSquare {
+            background-color: #ffcc00;
+            animation: fall 2s infinite;
+        }
+    
+        @keyframes fall {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(15px); }
+        }
+    
+        .checkpoint {
+            background-color: #00ccff;
+            box-shadow: 0px 0px 25px #00ccff;
+            animation: glowCheckpoint 2s infinite alternate;
+        }
+    
+        @keyframes glowCheckpoint {
+            0% { transform: scale(1); box-shadow: 0px 0px 25px #00ccff; }
+            100% { transform: scale(1.2); box-shadow: 0px 0px 40px #00ccff; }
+        }
+    
+        .trail {
+            background-color: lightblue !important;
+            transition: background 0.5s ease-out;
+        }
+    
+        /* Fog and Lighting Effects */
+        .maze-container::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            filter: blur(8px);
+            z-index: 2;
+            opacity: 0.3;
+        }
+    
+        /* Particles */
+        .particle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background-color: #ffeb3b;
+            border-radius: 50%;
+            animation: particleMove 1s infinite;
+            opacity: 0.7;
+        }
+    
+        @keyframes particleMove {
+            0% {
+                transform: translateX(0) translateY(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(5px) translateY(5px);
+                opacity: 0;
+            }
+        }
+    
+        /* Shadows and Lighting Effects */
+        .cell:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            filter: blur(15px);
+            transition: opacity 0.4s ease;
+            opacity: 0;
+        }
+    
+        .cell:hover:before {
+            opacity: 1;
+        }
+    
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+    
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 80, 80, 0.8);
+            border-radius: 12px;
+        }
+    
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 80, 80, 1);
+        }
+    
+        /* Legend Section */
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-top: 40px;
+            color: white;
+        }
+    
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 15px;
+        }
+    
+        .legend-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 5px;
+            margin-right: 8px;
+        }
+    
+        .legend-label {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+    
+    </style>
+    
+    
+    
+    
+    
+</head>
+<body>
+    <h1>Maze Generator with Obstacles</h1>
+
+    <div class="controls">
+        <label>Width:</label>
+        <input type="number" id="mazeWidth" value="15" min="5" max="250">
+        <label>Height:</label>
+        <input type="number" id="mazeHeight" value="15" min="5" max="250">
+        <button onclick="generateMaze()">Generate Maze</button>
+        <button onclick="downloadMaze()">Download Maze</button>
+    </div>
+
+    <div class="maze-container">
+        <div id="maze"></div>
+    </div>
+
+    <script>
+        let rows = 15, cols = 15;
+        let playerPosition = { x: 1, y: 1 };
+        let exitPosition = { x: rows - 2, y: cols - 2 };
+        let checkpoints = [];
+        let obstacles = [];
+        let maze = [];
+
+function generateMaze() {
+    rows = parseInt(document.getElementById('mazeWidth').value);
+    cols = parseInt(document.getElementById('mazeHeight').value);
+    document.getElementById('maze').innerHTML = ''; 
+
+    document.getElementById('maze').style.gridTemplateColumns = `repeat(${cols}, 20px)`;
+    document.getElementById('maze').style.gridTemplateRows = `repeat(${rows}, 20px)`;
+
+    maze = Array(rows).fill().map(() => Array(cols).fill(1));
+
+    function carvePath(x, y) {
+        maze[x][y] = 0;
+        let directions = shuffle([[0, 2], [0, -2], [2, 0], [-2, 0]]);
+        
+        for (let [dx, dy] of directions) {
+            let newX = x + dx, newY = y + dy;
+            if (newX > 0 && newX < rows - 1 && newY > 0 && newY < cols - 1 && maze[newX][newY] === 1) {
+                maze[newX - dx / 2][newY - dy / 2] = 0;
+                carvePath(newX, newY);
+            }
+        }
+    }
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            let j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    carvePath(1, 1);
+
+    playerPosition = { x: 1, y: 1 };
+    exitPosition = { x: rows - 2, y: cols - 2 };
+    maze[exitPosition.x][exitPosition.y] = 0;
+
+    addObstaclesAndElements();
+
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell ' + (maze[i][j] === 1 ? 'wall' : '');
+            cell.dataset.x = i;
+            cell.dataset.y = j;
+            document.getElementById('maze').appendChild(cell);
+        }
+    }
+
+    updatePlayerPosition();
+}
+
+
+        function addObstaclesAndElements() {
+            // Adding obstacles and elements randomly
+            const totalObstacles = Math.floor(rows * cols * 0.1);  // Random obstacles (10% of total cells)
+            for (let i = 0; i < totalObstacles; i++) {
+                const randX = Math.floor(Math.random() * rows);
+                const randY = Math.floor(Math.random() * cols);
+
+                if (maze[randX][randY] === 0 && !(randX === 1 && randY === 1) && !(randX === exitPosition.x && randY === exitPosition.y)) {
+                    let randomObstacle = Math.random();
+                    if (randomObstacle < 0.3) {
+                        maze[randX][randY] = 'spike';
+                        obstacles.push({ x: randX, y: randY, type: 'spike' });
+                    } else if (randomObstacle < 0.6) {
+                        maze[randX][randY] = 'teleport';
+                        obstacles.push({ x: randX, y: randY, type: 'teleport' });
+                    } else if (randomObstacle < 0.8) {
+                        maze[randX][randY] = 'fallingSquare';
+                        obstacles.push({ x: randX, y: randY, type: 'fallingSquare' });
+                    } else {
+                        maze[randX][randY] = 'checkpoint';
+                        checkpoints.push({ x: randX, y: randY });
+                    }
+                }
+            }
+        }
+
+        function updatePlayerPosition() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                const x = parseInt(cell.dataset.x);
+                const y = parseInt(cell.dataset.y);
+                cell.classList.remove('player', 'exit', 'spike', 'teleport', 'fallingSquare', 'checkpoint');
+
+                if (x === playerPosition.x && y === playerPosition.y) {
+                    cell.classList.add('player');
+                }
+                if (x === exitPosition.x && y === exitPosition.y) {
+                    cell.classList.add('exit');
+                }
+                if (maze[x][y] === 'spike') {
+                    cell.classList.add('spike');
+                }
+                if (maze[x][y] === 'teleport') {
+                    cell.classList.add('teleport');
+                }
+                if (maze[x][y] === 'fallingSquare') {
+                    cell.classList.add('fallingSquare');
+                }
+                if (maze[x][y] === 'checkpoint') {
+                    cell.classList.add('checkpoint');
+                }
+            });
+        }
+
+        function movePlayer(dx, dy) {
+            const newX = playerPosition.x + dx;
+            const newY = playerPosition.y + dy;
+
+            if (maze[newX] && maze[newX][newY] !== 1) {
+                if (maze[newX][newY] === 'spike') {
+                    alert("You hit a spike! Try again!");
+                    playerPosition = { x: 1, y: 1 };
+                } else if (maze[newX][newY] === 'teleport') {
+                    playerPosition = { x: rows - 2, y: cols - 2 };
+                } else if (maze[newX][newY] === 'fallingSquare') {
+                    alert("You were hit by a falling square! Restarting...");
+                    playerPosition = { x: 1, y: 1 };
+                } else {
+                    playerPosition.x = newX;
+                    playerPosition.y = newY;
+                }
+
+                updatePlayerPosition();
+
+                if (playerPosition.x === exitPosition.x && playerPosition.y === exitPosition.y) {
+                    setTimeout(() => alert("You won!"), 200);
+                }
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowUp': movePlayer(-1, 0); break;
+                case 'ArrowDown': movePlayer(1, 0); break;
+                case 'ArrowLeft': movePlayer(0, -1); break;
+                case 'ArrowRight': movePlayer(0, 1); break;
+            }
+        });
+
+        function downloadMaze() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const cellSize = 20;
+    
+    canvas.width = cols * cellSize;
+    canvas.height = rows * cellSize + 50; // Extra space for the legend
+
+    // Background
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let checkpointPositions = [];
+
+    document.querySelectorAll('.cell').forEach(cell => {
+        const x = parseInt(cell.dataset.x);
+        const y = parseInt(cell.dataset.y);
+        const posX = y * cellSize;
+        const posY = x * cellSize;
+
+        if (cell.classList.contains('wall')) {
+            ctx.fillStyle = "black";
+        } else if (cell.classList.contains('checkpoint')) {
+            ctx.fillStyle = "blue"; // Checkpoints highlighted
+            checkpointPositions.push(`(${x}, ${y})`);
+        } else {
+            ctx.fillStyle = "white";
+        }
+
+        ctx.fillRect(posX, posY, cellSize, cellSize);
+    });
+
+    // Add text at the bottom for checkpoint positions
+    ctx.fillStyle = "white";
+    ctx.font = "14px Arial";
+    ctx.fillText("Checkpoints at: " + (checkpointPositions.length > 0 ? checkpointPositions.join(", ") : "None"), 10, canvas.height - 30);
+
+    // Download the image
+    const link = document.createElement('a');
+    link.download = 'maze_with_checkpoints.png';
+    link.href = canvas.toDataURL();
+    link.click();
+}
+ 
+        generateMaze();
+    </script>
+</body>
+</html>
